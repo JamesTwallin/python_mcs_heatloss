@@ -226,11 +226,11 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Room Name</label>
-                            <input type="text" id="roomName" placeholder="e.g., Lounge">
+                            <input type="text" id="roomName" placeholder="e.g., Lounge" onchange="autoSaveRoomProperties()">
                         </div>
                         <div class="form-group">
                             <label>Room Type</label>
-                            <select id="roomType">
+                            <select id="roomType" onchange="autoSaveRoomProperties()">
                                 <option value="Lounge">Lounge</option>
                                 <option value="Kitchen">Kitchen</option>
                                 <option value="Bedroom">Bedroom</option>
@@ -241,19 +241,19 @@
                         </div>
                         <div class="form-group">
                             <label>Width (m)</label>
-                            <input type="number" id="roomWidth" value="5" step="0.1" min="0.1">
+                            <input type="number" id="roomWidth" value="5" step="0.1" min="0.1" onchange="autoSaveRoomProperties()">
                         </div>
                         <div class="form-group">
                             <label>Depth (m)</label>
-                            <input type="number" id="roomDepth" value="4" step="0.1" min="0.1">
+                            <input type="number" id="roomDepth" value="4" step="0.1" min="0.1" onchange="autoSaveRoomProperties()">
                         </div>
                         <div class="form-group">
                             <label>Height (m)</label>
-                            <input type="number" id="roomHeight" value="2.4" step="0.1" min="0.1">
+                            <input type="number" id="roomHeight" value="2.4" step="0.1" min="0.1" onchange="autoSaveRoomProperties()">
                         </div>
                         <div class="form-group">
                             <label>Design Temp (°C)</label>
-                            <input type="number" id="designTemp" placeholder="Auto" step="0.5">
+                            <input type="number" id="designTemp" placeholder="Auto" step="0.5" onchange="autoSaveRoomProperties()">
                         </div>
                     </div>
 
@@ -261,11 +261,11 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>X Position (m)</label>
-                            <input type="number" id="positionX" value="0" step="1">
+                            <input type="number" id="positionX" value="0" step="1" onchange="autoSaveRoomProperties()">
                         </div>
                         <div class="form-group">
                             <label>Z Position (m)</label>
-                            <input type="number" id="positionZ" value="0" step="1">
+                            <input type="number" id="positionZ" value="0" step="1" onchange="autoSaveRoomProperties()">
                         </div>
                     </div>
                     <button type="button" class="btn btn-small btn-block" onclick="autoPositionNextToAdjacent()">
@@ -279,12 +279,12 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Air Change Rate (ACH)</label>
-                            <input type="number" id="airChangeRate" placeholder="Auto from category" step="0.1" min="0">
+                            <input type="number" id="airChangeRate" placeholder="Auto from category" step="0.1" min="0" onchange="autoSaveRoomProperties()">
                             <small>Leave blank for automatic. Use blower door test result if available.</small>
                         </div>
                         <div class="form-group">
                             <label>Thermal Bridging (%)</label>
-                            <input type="number" id="thermalBridging" value="15" step="1" min="0" max="100">
+                            <input type="number" id="thermalBridging" value="15" step="1" min="0" max="100" onchange="autoSaveRoomProperties()">
                             <small>15% standard, 10% good design, 5% excellent</small>
                         </div>
                     </div>

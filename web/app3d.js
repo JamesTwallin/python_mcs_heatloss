@@ -341,7 +341,7 @@ function createRoomMesh(roomData, index) {
         });
     }
 
-    // Create walls with window cutouts as 4 rectangles around each window
+    // Create walls with window cutouts - simplified approach for multiple windows
     function createWallWithOpenings(wallInfo, wallName) {
         const [wallWidth, wallHeight, wallDepth] = wallInfo.size;
         const windows = wallInfo.windows;
@@ -357,6 +357,17 @@ function createRoomMesh(roomData, index) {
             return wall;
         }
 
+        // For multiple windows, just create a solid wall
+        // Windows will overlay and be transparent
+        const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth),
+            wallMaterial
+        );
+        wall.position.set(...wallInfo.position);
+        wall.castShadow = true;
+        return wall;
+
+        /* DISABLED: Complex multi-window segmentation - causes overlaps
         const wallGroup = new THREE.Group();
         wallGroup.position.set(...wallInfo.position);
 
@@ -539,6 +550,7 @@ function createRoomMesh(roomData, index) {
         });
 
         return wallGroup;
+        */
     }
 
     // Add walls with openings
@@ -893,6 +905,30 @@ function autoSaveRoomData() {
     projectData.rooms[index].walls = currentWalls;
     projectData.rooms[index].windows = currentWindows;
     projectData.rooms[index].floors = currentFloors;
+
+    // Save to localStorage
+    saveToLocalStorage();
+}
+
+// Auto-save room properties (name, dimensions, etc.)
+function autoSaveRoomProperties() {
+    const modal = document.getElementById('roomModal');
+    if (!modal || !modal.dataset.editIndex) return;
+
+    const index = parseInt(modal.dataset.editIndex);
+    if (index < 0 || index >= projectData.rooms.length) return;
+
+    // Update all room properties
+    projectData.rooms[index].name = document.getElementById('roomName').value;
+    projectData.rooms[index].room_type = document.getElementById('roomType').value;
+    projectData.rooms[index].width = parseFloat(document.getElementById('roomWidth').value);
+    projectData.rooms[index].depth = parseFloat(document.getElementById('roomDepth').value);
+    projectData.rooms[index].height = parseFloat(document.getElementById('roomHeight').value);
+    projectData.rooms[index].design_temp = document.getElementById('designTemp').value ? parseFloat(document.getElementById('designTemp').value) : null;
+    projectData.rooms[index].position_x = parseFloat(document.getElementById('positionX').value);
+    projectData.rooms[index].position_z = parseFloat(document.getElementById('positionZ').value);
+    projectData.rooms[index].air_change_rate = document.getElementById('airChangeRate').value ? parseFloat(document.getElementById('airChangeRate').value) : null;
+    projectData.rooms[index].thermal_bridging = parseFloat(document.getElementById('thermalBridging').value);
 
     // Save to localStorage
     saveToLocalStorage();
