@@ -42,10 +42,17 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints
 
-# Generated files
+# Generated/temporary analysis files
 calculator_structure.json
 excel_structure.txt
 heat_loss_summary.json
+validation_results.json
+excel_data_extract.txt
+excel_extracted_data.json
+analyze_excel.py
+extract_formulas.py
+extract_excel_test_case.py
+compare_excel_direct.py
 
 # OS
 .DS_Store
