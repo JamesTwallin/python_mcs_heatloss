@@ -226,66 +226,144 @@ class FloorUValues:
 
 
 class RoomTemperatures:
-    """Design room temperatures based on BS EN 12831."""
+    """Design room temperatures based on BS EN 12831 and MCS Heat Pump Calculator v1.10."""
 
     TEMPERATURES = {
-        'Lounge': 21,
-        'Dining': 21,
+        'Bath': 22,
+        'Bathroom': 22,
+        'Bed & Ensuite': 22,
         'Bed/Study': 18,
         'Bedroom': 18,
-        'Hall': 18,
-        'Landing': 18,
-        'Kitchen': 18,
-        'Bathroom': 22,
-        'En Suite': 22,
-        'WC': 18,
-        'Utility': 18,
-        'Store': 15,
+        'Bedsitting': 21,
+        'Breakfast': 21,
+        'Cloaks/WC': 18,
         'Conservatory': 18,
+        'Dining': 21,
+        'Dressing': 18,
+        'En Suite': 22,
+        'Family': 21,
+        'Games': 18,
+        'Hall': 18,
+        'Internal': 18,
+        'Kitchen': 18,
+        'Landing': 18,
+        'Living': 21,
+        'Lounge': 21,
+        'Shower': 22,
+        'Store': 15,
+        'Study': 18,
+        'Toilet': 18,
+        'Utility': 18,
+        'WC': 18,
     }
 
     @classmethod
     def get_temperature(cls, room_type: str) -> float:
-        """Get design temperature for a room type."""
+        """
+        Get design temperature for a room type.
+
+        Args:
+            room_type: Room type name
+
+        Returns:
+            Design temperature in °C (default 21°C if not found)
+        """
         return cls.TEMPERATURES.get(room_type, 21)
 
 
 class VentilationRates:
-    """Natural ventilation rates based on BS EN 12831."""
+    """Natural ventilation rates based on BS EN 12831 and MCS Heat Pump Calculator v1.10."""
 
-    # Air changes per hour by room category
+    # Air changes per hour by room category (from Excel Design Details columns AA-AF)
     RATES = {
-        'A': {  # Category A - higher ventilation
-            'Lounge': 1.5,
-            'Dining': 1.5,
-            'Bedroom': 1.5,
-            'Kitchen': 2.0,
-            'Bathroom': 2.0,
-            'Hall': 1.5,
-            'Landing': 1.5,
-        },
-        'B': {  # Category B - medium ventilation
-            'Lounge': 1.0,
-            'Dining': 1.0,
+        'A': {  # Category A - higher ventilation (older/leakier buildings)
+            'Bath': 3.0,
+            'Bathroom': 3.0,  # Alias for Bath
+            'Bed & Ensuite': 2.0,
+            'Bed/Study': 1.5,
             'Bedroom': 1.0,
-            'Kitchen': 1.5,
-            'Bathroom': 1.5,
-            'Hall': 1.0,
-            'Landing': 1.0,
+            'Bedsitting': 1.5,
+            'Breakfast': 1.5,
+            'Cloaks/WC': 2.0,
+            'Dining': 1.5,
+            'Dressing': 1.5,
+            'Family': 2.0,
+            'Games': 1.5,
+            'Hall': 2.0,
+            'Internal': 0.0,
+            'Kitchen': 2.0,
+            'Landing': 2.0,
+            'Living': 1.5,
+            'Lounge': 1.5,
+            'Shower': 3.0,
+            'Store': 1.0,
+            'Study': 1.5,
+            'Toilet': 3.0,
+            'Utility': 3.0,
         },
-        'C': {  # Category C - lower ventilation (tight buildings)
-            'Lounge': 0.5,
-            'Dining': 0.5,
+        'B': {  # Category B - medium ventilation (standard buildings)
+            'Bath': 1.5,
+            'Bathroom': 1.5,  # Alias for Bath
+            'Bed & Ensuite': 1.5,
+            'Bed/Study': 1.5,
+            'Bedroom': 1.0,
+            'Bedsitting': 1.0,
+            'Breakfast': 1.0,
+            'Cloaks/WC': 1.5,
+            'Dining': 1.0,
+            'Dressing': 1.0,
+            'Family': 1.5,
+            'Games': 1.0,
+            'Hall': 1.0,
+            'Internal': 0.0,
+            'Kitchen': 1.5,
+            'Landing': 1.0,
+            'Living': 1.0,
+            'Lounge': 1.0,
+            'Shower': 1.5,
+            'Store': 0.5,
+            'Study': 1.5,
+            'Toilet': 1.5,
+            'Utility': 2.0,
+        },
+        'C': {  # Category C - lower ventilation (tight/new buildings)
+            'Bath': 1.5,
+            'Bathroom': 1.5,  # Alias for Bath
+            'Bed & Ensuite': 1.0,
+            'Bed/Study': 0.5,
             'Bedroom': 0.5,
-            'Kitchen': 1.0,
-            'Bathroom': 1.0,
+            'Bedsitting': 0.5,
+            'Breakfast': 0.5,
+            'Cloaks/WC': 1.5,
+            'Dining': 0.5,
+            'Dressing': 0.5,
+            'Family': 1.5,
+            'Games': 0.5,
             'Hall': 0.5,
+            'Internal': 0.0,
+            'Kitchen': 1.5,
             'Landing': 0.5,
+            'Living': 0.5,
+            'Lounge': 0.5,
+            'Shower': 1.5,
+            'Store': 0.5,
+            'Study': 0.5,
+            'Toilet': 1.5,
+            'Utility': 0.5,
         }
     }
 
     @classmethod
     def get_rate(cls, room_type: str, category: str = 'B') -> float:
-        """Get ventilation rate (ACH) for a room type and building category."""
+        """
+        Get ventilation rate (ACH) for a room type and building category.
+
+        Args:
+            room_type: Room type name (e.g., 'Lounge', 'Kitchen', 'Bedroom')
+            category: Building category 'A' (leaky), 'B' (standard), or 'C' (tight)
+
+        Returns:
+            Air changes per hour (ACH) for the room type
+        """
         category_rates = cls.RATES.get(category, cls.RATES['B'])
         return category_rates.get(room_type, 1.0)
