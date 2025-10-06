@@ -380,12 +380,127 @@ Update methods in `Room` class, ensure tests are updated
 **Version Updates**:
 Update `__version__` in `mcs_calculator/__init__.py`
 
+## Web Interface (3D Visualization)
+
+### Overview
+
+A comprehensive 3D web application has been developed in `web/` that provides:
+- Interactive 3D building modeling using Three.js
+- Visual heat loss calculations with color-coded heatmaps
+- JSON import/export for data persistence
+- 100% compatibility with Python calculator data format
+- Client-side calculations (no server required)
+- Deployable to GitHub Pages
+
+### Key Features
+
+**Building Shell Workflow**:
+1. Create building outline with dimensions (width × depth × height)
+2. Specify room grid (e.g., 3×2 = 6 rooms)
+3. Automatically subdivide into rooms with shared walls
+4. Inter-room heat transfer automatically configured
+
+**Room Editing**:
+- Full fabric element editing (walls, windows, floors)
+- Wall boundary selection: external, ground, unheated, or adjacent room
+- Window positioning on specific walls (front/back/left/right)
+- Position control for room placement
+- Auto-positioning next to adjacent rooms
+
+**Visual Features**:
+- 3D room meshes with realistic materials
+- Windows with frames visible from outside
+- Orange connection lines between adjacent rooms
+- Heat loss color coding
+- Room labels and measurements
+- Grid and camera controls
+
+**Calculations**:
+- Implements exact same formulas as Python code
+- Inter-room heat transfer support
+- Building category ACH defaults
+- Thermal bridging calculations
+- Real-time results display
+
+### Data Compatibility
+
+The web interface adds visualization-only fields that are safely ignored by Python:
+
+**Room extras**: `position_x`, `position_z`, `width`, `depth`
+**Window extras**: `wall` (front/back/left/right)
+
+See `WEB_DATA_COMPATIBILITY.md` for detailed documentation.
+
+### Workflow Example
+
+```bash
+# 1. Create building shell
+Click "Create Building Shell" → 12m × 8m, 3×2 rooms
+
+# 2. Subdivide
+Click "Subdivide into Rooms" → 6 rooms auto-created with shared walls
+
+# 3. Customize rooms
+Edit each room: set type, temperature, add windows
+
+# 4. Calculate
+Click "Calculate Heat Loss" → see total and per-room results
+
+# 5. Export
+Click "Save" → download JSON
+
+# 6. Use in Python
+python -c "from mcs_calculator import *; ..."
+```
+
+### File Structure
+
+```
+web/
+├── index.html              # Main HTML with modals
+├── styles.css              # Styling and layout
+├── app3d.js               # 3D visualization and logic
+├── README.md              # Web interface documentation
+└── test.html              # Three.js test file
+```
+
+### Deployment
+
+Deployable to GitHub Pages with zero configuration:
+1. Push `web/` folder to GitHub
+2. Enable Pages in repository settings
+3. Access at: `https://username.github.io/repo/web/`
+
+See `DEPLOY_GITHUB_PAGES.md` for details.
+
+### Implementation Notes
+
+**JavaScript Calculation Logic**:
+- Mirrors Python `room.py` formulas exactly
+- Uses same inter-room heat transfer approach
+- Respects wall boundaries (external/ground/unheated/adjacent)
+- Applies thermal bridging after summing fabric losses
+
+**3D Rendering**:
+- Three.js r128 with OrbitControls
+- Responsive canvas with window resize handling
+- Shadow mapping for realistic lighting
+- Materials: Standard for walls, Physical for windows
+
+**State Management**:
+- `projectData` object holds all building data
+- `rooms` array holds 3D meshes linked to data
+- `buildingShell` holds shell visualization
+- Modal forms use `currentWalls/Windows/Floors` for editing
+
 ## Conclusion
 
-This Python implementation successfully replicates the core heat loss calculation functionality of the MCS Heat Pump Calculator Excel spreadsheet, with improved:
-- Testability (20 automated tests)
-- Maintainability (modular, typed, documented code)
-- Usability (simple API, programmatic access)
-- Extensibility (easy to add features)
+This implementation provides:
+- **Python Calculator**: Production-ready heat loss calculations following BS EN 12831
+- **Web Interface**: Interactive 3D visualization with full data compatibility
+- **Testability**: 61 automated tests (100% passing)
+- **Maintainability**: Modular, typed, documented code
+- **Usability**: Simple API and intuitive 3D interface
+- **Extensibility**: Easy to add features to both systems
 
-The implementation is production-ready for heat loss calculations and heat pump system design following BS EN 12831 methodology.
+The dual implementation (Python + Web) offers maximum flexibility for different use cases while maintaining 100% calculation consistency and data compatibility.

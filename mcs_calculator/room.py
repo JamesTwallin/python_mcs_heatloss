@@ -27,7 +27,11 @@ class Wall:
 
 @dataclass
 class Window:
-    """Window element for heat loss calculation."""
+    """Window element for heat loss calculation.
+
+    Note: The web interface may add optional fields like 'wall' (front/back/left/right)
+    for 3D visualization purposes. These fields are ignored by the heat loss calculations.
+    """
     name: str
     area: float  # m²
     u_value: float  # W/m²K
@@ -60,7 +64,12 @@ class Floor:
 
 @dataclass
 class Room:
-    """Room heat loss calculation."""
+    """Room heat loss calculation.
+
+    Note: The web interface may add optional fields like 'position_x', 'position_z', 'width', 'depth'
+    for 3D visualization purposes. These fields are ignored by the heat loss calculations.
+    Similarly, Window objects may have a 'wall' field (front/back/left/right) for positioning.
+    """
     name: str
     room_type: str  # e.g., 'Lounge', 'Bedroom', etc.
     design_temp: float  # °C

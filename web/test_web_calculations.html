@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Calculator Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-suite {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .test {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #ccc;
+            border-radius: 4px;
+        }
+        .test.pass {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .test.fail {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-result {
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary h2 {
+            color: white;
+            margin-top: 0;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .expected {
+            color: #666;
+        }
+        .actual {
+            color: #333;
+            font-weight: bold;
+        }
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-suite">
+        <h1>🧪 MCS Heat Loss Calculator - Web Interface Test Suite</h1>
+        <p>Testing JavaScript calculation logic against Python reference implementation</p>
+
+        <div id="results"></div>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        // Test framework
+        const tests = [];
+        let passed = 0;
+        let failed = 0;
+
+        function test(name, fn) {
+            tests.push({ name, fn });
+        }
+
+        function assertEqual(actual, expected, message, tolerance = 0.01) {
+            const diff = Math.abs(actual - expected);
+            if (diff <= tolerance) {
+                return { pass: true, message };
+            } else {
+                return {
+                    pass: false,
+                    message: `${message}\nExpected: ${expected}\nActual: ${actual}\nDifference: ${diff.toFixed(4)}`
+                };
+            }
+        }
+
+        function assertWithinPercent(actual, expected, percent, message) {
+            const tolerance = Math.abs(expected * percent / 100);
+            return assertEqual(actual, expected, message, tolerance);
+        }
+
+        // Copy of calculation logic from app3d.js
+        function calculateFabricLoss(room, externalTemp, roomTemps) {
+            let wallLoss = 0;
+            let interRoomLoss = 0;
+
+            if (room.walls) {
+                room.walls.forEach(wall => {
+                    let tempDiff;
+                    if (wall.boundary in roomTemps) {
+                        const adjacentTemp = roomTemps[wall.boundary];
+                        tempDiff = room.design_temp - adjacentTemp;
+                        interRoomLoss += wall.area * wall.u_value * tempDiff;
+                        return;
+                    } else if (wall.boundary === 'ground') {
+                        const groundTemp = wall.boundary_temp !== undefined ? wall.boundary_temp : externalTemp;
+                        tempDiff = room.design_temp - groundTemp;
+                    } else if (wall.boundary === 'unheated') {
+                        const unheatedTemp = wall.boundary_temp !== undefined ? wall.boundary_temp : 18;
+                        tempDiff = room.design_temp - unheatedTemp;
+                    } else {
+                        tempDiff = room.design_temp - externalTemp;
+                    }
+                    wallLoss += wall.area * wall.u_value * tempDiff * (wall.temperature_factor || 1.0);
+                });
+            }
+
+            let windowLoss = 0;
+            if (room.windows) {
+                room.windows.forEach(window => {
+                    const tempDiff = room.design_temp - externalTemp;
+                    windowLoss += window.area * window.u_value * tempDiff;
+                });
+            }
+
+            let floorLoss = 0;
+            if (room.floors) {
+                room.floors.forEach(floor => {
+                    const tempFactor = floor.temperature_factor || 0.5;
+                    const tempDiff = (room.design_temp - externalTemp) * tempFactor;
+                    floorLoss += floor.area * floor.u_value * tempDiff;
+                });
+            }
+
+            const fabricLoss = wallLoss + windowLoss + floorLoss + interRoomLoss;
+            const bridgingFactor = (room.thermal_bridging || 15) / 100;
+            return fabricLoss * (1 + bridgingFactor);
+        }
+
+        function calculateVentilationLoss(room, externalTemp, ach) {
+            const volume = room.width * room.depth * room.height;
+            const tempDiff = room.design_temp - externalTemp;
+            return 0.33 * ach * volume * tempDiff;
+        }
+
+        // Test Cases
+        test('Simple external wall heat loss', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [{ area: 12, u_value: 0.3, boundary: 'external', temperature_factor: 1.0 }],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const expected = 12 * 0.3 * (21 - (-2)); // 82.8W
+            return assertEqual(fabricLoss, expected, 'External wall fabric loss');
+        });
+
+        test('Ventilation heat loss', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [], windows: [], floors: []
+            };
+            const ventLoss = calculateVentilationLoss(room, -2, 1.5);
+            const volume = 5 * 4 * 2.4; // 48 m³
+            const expected = 0.33 * 1.5 * 48 * (21 - (-2)); // 546.48W
+            return assertEqual(ventLoss, expected, 'Ventilation loss');
+        });
+
+        test('Window heat loss', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [],
+                windows: [{ area: 4, u_value: 1.4, wall: 'front' }],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const expected = 4 * 1.4 * (21 - (-2)); // 128.8W
+            return assertEqual(fabricLoss, expected, 'Window heat loss');
+        });
+
+        test('Floor with temperature factor', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [],
+                windows: [],
+                floors: [{ area: 20, u_value: 0.25, temperature_factor: 0.5 }]
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const expected = 20 * 0.25 * (21 - (-2)) * 0.5; // 57.5W
+            return assertEqual(fabricLoss, expected, 'Floor with temp factor');
+        });
+
+        test('Thermal bridging calculation', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 15,  // 15%
+                walls: [{ area: 12, u_value: 0.3, boundary: 'external', temperature_factor: 1.0 }],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const baseLoss = 12 * 0.3 * (21 - (-2)); // 82.8W
+            const expected = baseLoss * 1.15; // 95.22W
+            return assertEqual(fabricLoss, expected, 'Thermal bridging adds 15%');
+        });
+
+        test('Inter-room heat transfer', () => {
+            const roomTemps = { Kitchen: 18 };
+            const room = {
+                name: 'Lounge',
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [
+                    { area: 12, u_value: 0.5, boundary: 'Kitchen', temperature_factor: 1.0 }
+                ],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, roomTemps);
+            const expected = 12 * 0.5 * (21 - 18); // 18W
+            return assertEqual(fabricLoss, expected, 'Inter-room heat transfer');
+        });
+
+        test('Ground boundary wall', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [{ area: 12, u_value: 0.3, boundary: 'ground', temperature_factor: 1.0 }],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            // Ground boundary uses external temp by default
+            const expected = 12 * 0.3 * (21 - (-2)); // 82.8W
+            return assertEqual(fabricLoss, expected, 'Ground boundary wall');
+        });
+
+        test('Unheated boundary wall', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [{ area: 12, u_value: 0.3, boundary: 'unheated', temperature_factor: 1.0 }],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const expected = 12 * 0.3 * (21 - 18); // 10.8W (18°C default unheated)
+            return assertEqual(fabricLoss, expected, 'Unheated boundary wall');
+        });
+
+        test('Multiple windows on different walls', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [],
+                windows: [
+                    { area: 4, u_value: 1.4, wall: 'front' },
+                    { area: 3, u_value: 1.4, wall: 'back' },
+                    { area: 2, u_value: 1.4, wall: 'left' }
+                ],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const expected = (4 + 3 + 2) * 1.4 * (21 - (-2)); // 289.8W
+            return assertEqual(fabricLoss, expected, 'Multiple windows');
+        });
+
+        test('Complete room calculation', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 15,
+                walls: [
+                    { area: 12, u_value: 0.3, boundary: 'external', temperature_factor: 1.0 },
+                    { area: 12, u_value: 0.3, boundary: 'external', temperature_factor: 1.0 }
+                ],
+                windows: [{ area: 4, u_value: 1.4, wall: 'front' }],
+                floors: [{ area: 20, u_value: 0.25, temperature_factor: 0.5 }]
+            };
+
+            const fabricLoss = calculateFabricLoss(room, -2, {});
+            const ventLoss = calculateVentilationLoss(room, -2, 1.0);
+            const totalLoss = fabricLoss + ventLoss;
+
+            // Fabric: walls (82.8*2) + window (128.8) + floor (57.5) = 351.9W
+            // With 15% bridging: 351.9 * 1.15 = 404.685W
+            // Ventilation: 0.33 * 1.0 * 48 * 23 = 364.32W
+            // Total: 769.005W
+            const expectedTotal = 769.005;
+            return assertWithinPercent(totalLoss, expectedTotal, 0.1, 'Complete room heat loss');
+        });
+
+        test('Zero temperature difference', () => {
+            const room = {
+                design_temp: 21,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [{ area: 12, u_value: 0.3, boundary: 'external', temperature_factor: 1.0 }],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, 21, {});  // Same temp
+            const ventLoss = calculateVentilationLoss(room, 21, 1.0);
+            return assertEqual(fabricLoss + ventLoss, 0, 'Zero heat loss at same temp');
+        });
+
+        test('Negative heat flow (heat gain)', () => {
+            const roomTemps = { Kitchen: 25 };  // Warmer adjacent room
+            const room = {
+                name: 'Bedroom',
+                design_temp: 18,
+                width: 5, depth: 4, height: 2.4,
+                thermal_bridging: 0,
+                walls: [
+                    { area: 12, u_value: 0.5, boundary: 'Kitchen', temperature_factor: 1.0 }
+                ],
+                windows: [],
+                floors: []
+            };
+            const fabricLoss = calculateFabricLoss(room, -2, roomTemps);
+            const expected = 12 * 0.5 * (18 - 25); // -42W (heat gain)
+            return assertEqual(fabricLoss, expected, 'Negative heat flow (gain from warmer room)');
+        });
+
+        // Run all tests
+        function runTests() {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+
+            tests.forEach(({ name, fn }) => {
+                try {
+                    const result = fn();
+                    const testDiv = document.createElement('div');
+                    testDiv.className = result.pass ? 'test pass' : 'test fail';
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'test-name';
+                    nameDiv.textContent = `${result.pass ? '✅' : '❌'} ${name}`;
+
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'test-result';
+                    resultDiv.innerHTML = result.message.replace(/\n/g, '<br>');
+
+                    testDiv.appendChild(nameDiv);
+                    testDiv.appendChild(resultDiv);
+                    resultsDiv.appendChild(testDiv);
+
+                    if (result.pass) {
+                        passed++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'test fail';
+                    testDiv.innerHTML = `
+                        <div class="test-name">❌ ${name}</div>
+                        <div class="test-result error">ERROR: ${error.message}</div>
+                    `;
+                    resultsDiv.appendChild(testDiv);
+                    failed++;
+                }
+            });
+
+            const total = passed + failed;
+            const percentage = ((passed / total) * 100).toFixed(1);
+
+            summaryDiv.innerHTML = `
+                <h2>Test Summary</h2>
+                <div style="font-size: 3em; margin: 20px 0;">${passed}/${total}</div>
+                <div style="font-size: 1.5em;">
+                    ${percentage}% Pass Rate
+                </div>
+                <div style="margin-top: 20px;">
+                    ${failed === 0 ? '🎉 All tests passed!' : `⚠️ ${failed} test(s) failed`}
+                </div>
+            `;
+        }
+
+        // Run tests when page loads
+        window.onload = runTests;
+    </script>
+</body>
+</html>

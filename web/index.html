@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCS Heat Loss Calculator - 3D Model</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🏠 MCS Heat Loss Calculator</h1>
+                <p>3D Building Heat Loss Modeller</p>
+            </div>
+            <div class="header-actions">
+                <button id="newProject" class="btn btn-icon" title="New Project">
+                    <span>📄</span> New
+                </button>
+                <button id="loadJson" class="btn btn-icon" title="Load Project">
+                    <span>📂</span> Load
+                </button>
+                <button id="saveJson" class="btn btn-icon" title="Save Project">
+                    <span>💾</span> Save
+                </button>
+                <input type="file" id="fileInput" accept=".json" style="display: none;">
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-layout">
+            <!-- Left Sidebar - Tools -->
+            <aside class="sidebar sidebar-left">
+                <div class="panel">
+                    <h2>🛠️ Building Tools</h2>
+
+                    <div class="tool-section">
+                        <h3>Building Setup</h3>
+                        <button id="createShell" class="btn btn-tool btn-primary">
+                            <span class="icon">🏢</span>
+                            <span>Create Building Shell</span>
+                        </button>
+                        <button id="subdivideShell" class="btn btn-tool">
+                            <span class="icon">✂️</span>
+                            <span>Subdivide into Rooms</span>
+                        </button>
+                    </div>
+
+                    <div class="tool-section">
+                        <h3>Add Room</h3>
+                        <button id="addRoom" class="btn btn-tool">
+                            <span class="icon">🏗️</span>
+                            <span>New Room</span>
+                        </button>
+                    </div>
+
+                    <div class="tool-section">
+                        <h3>View Options</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showHeatmap" checked>
+                            <span>Show Heat Loss Colors</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showLabels" checked>
+                            <span>Show Measurements</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showGrid" checked>
+                            <span>Show Grid</span>
+                        </label>
+                    </div>
+
+                    <div class="tool-section">
+                        <h3>Camera View</h3>
+                        <div class="button-group vertical">
+                            <button class="btn btn-small" onclick="setCameraView('front')">Front</button>
+                            <button class="btn btn-small" onclick="setCameraView('top')">Top</button>
+                            <button class="btn btn-small" onclick="setCameraView('iso')">3D View</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📍 Building Config</h2>
+                    <div class="form-group">
+                        <label>Building Name</label>
+                        <input type="text" id="buildingName" value="My House">
+                    </div>
+                    <div class="form-group">
+                        <label>Postcode Area</label>
+                        <input type="text" id="postcodeArea" value="M" placeholder="e.g., M, SW">
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="buildingCategory">
+                            <option value="A">A - Leaky</option>
+                            <option value="B" selected>B - Standard</option>
+                            <option value="C">C - Tight</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>External Temp (°C)</label>
+                        <input type="number" id="externalTemp" value="-3.1" step="0.1">
+                    </div>
+                    <div id="locationInfo" class="info-box"></div>
+                </div>
+            </aside>
+
+            <!-- Center - 3D View -->
+            <main class="viewport">
+                <div id="canvas-container">
+                    <canvas id="threeCanvas"></canvas>
+                </div>
+
+                <!-- 3D Overlay Controls -->
+                <div class="viewport-controls">
+                    <div class="control-group">
+                        <button class="btn btn-icon" onclick="zoomIn()">
+                            <span>🔍+</span>
+                        </button>
+                        <button class="btn btn-icon" onclick="zoomOut()">
+                            <span>🔍-</span>
+                        </button>
+                        <button class="btn btn-icon" onclick="resetCamera()">
+                            <span>🔄</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <span id="status">Loading...</span>
+                    <span id="coordinates"></span>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Properties & Results -->
+            <aside class="sidebar sidebar-right">
+                <div class="panel">
+                    <h2>🎯 Selection</h2>
+                    <div id="selectionPanel">
+                        <p class="placeholder">Click on a room to see properties</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📊 Results</h2>
+                    <button id="calculate" class="btn btn-primary btn-block">
+                        Calculate Heat Loss
+                    </button>
+                    <div id="results" class="results-container">
+                        <p class="placeholder">Click calculate to see results</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📋 Rooms List</h2>
+                    <div id="roomsList" class="rooms-list">
+                        <p class="placeholder">No rooms yet</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Building Shell Modal -->
+    <div id="shellModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Building Shell</h2>
+                <button class="close-btn" onclick="closeShellModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Building Width (m)</label>
+                    <input type="number" id="shellWidth" value="12" step="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Building Depth (m)</label>
+                    <input type="number" id="shellDepth" value="8" step="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Building Height (m)</label>
+                    <input type="number" id="shellHeight" value="2.4" step="0.1" min="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Number of Rooms (Width)</label>
+                    <input type="number" id="shellRoomsX" value="3" step="1" min="1" max="10">
+                    <small>How many rooms across the width</small>
+                </div>
+                <div class="form-group">
+                    <label>Number of Rooms (Depth)</label>
+                    <input type="number" id="shellRoomsZ" value="2" step="1" min="1" max="10">
+                    <small>How many rooms along the depth</small>
+                </div>
+                <div class="info-box">
+                    <strong>How it works:</strong><br>
+                    1. This creates a building outline with the specified dimensions<br>
+                    2. Click "Subdivide into Rooms" to automatically split it into rooms<br>
+                    3. Shared walls between rooms will be automatically connected
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeShellModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createBuildingShell()">Create Shell</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Properties Modal -->
+    <div id="roomModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Room Properties</h2>
+                <button class="close-btn" onclick="closeRoomModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="basic">Basic</button>
+                    <button class="tab-btn" data-tab="thermal">Thermal</button>
+                </div>
+
+                <!-- Basic Tab -->
+                <div class="tab-content active" data-tab="basic">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Room Name</label>
+                            <input type="text" id="roomName" placeholder="e.g., Lounge">
+                        </div>
+                        <div class="form-group">
+                            <label>Room Type</label>
+                            <select id="roomType">
+                                <option value="Lounge">Lounge</option>
+                                <option value="Kitchen">Kitchen</option>
+                                <option value="Bedroom">Bedroom</option>
+                                <option value="Bathroom">Bathroom</option>
+                                <option value="Dining">Dining</option>
+                                <option value="Hall">Hall</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Width (m)</label>
+                            <input type="number" id="roomWidth" value="5" step="0.1" min="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Depth (m)</label>
+                            <input type="number" id="roomDepth" value="4" step="0.1" min="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Height (m)</label>
+                            <input type="number" id="roomHeight" value="2.4" step="0.1" min="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Design Temp (°C)</label>
+                            <input type="number" id="designTemp" placeholder="Auto" step="0.5">
+                        </div>
+                    </div>
+
+                    <h3>Position</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>X Position (m)</label>
+                            <input type="number" id="positionX" value="0" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Z Position (m)</label>
+                            <input type="number" id="positionZ" value="0" step="1">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-small btn-block" onclick="autoPositionNextToAdjacent()">
+                        📐 Auto-Position Next to Adjacent Room
+                    </button>
+                </div>
+
+                <!-- Thermal Tab -->
+                <div class="tab-content" data-tab="thermal">
+                    <h3>Ventilation & Bridging</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Air Change Rate (ACH)</label>
+                            <input type="number" id="airChangeRate" placeholder="Auto from category" step="0.1" min="0">
+                            <small>Leave blank for automatic. Use blower door test result if available.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Thermal Bridging (%)</label>
+                            <input type="number" id="thermalBridging" value="15" step="1" min="0" max="100">
+                            <small>15% standard, 10% good design, 5% excellent</small>
+                        </div>
+                    </div>
+
+                    <h3>Walls</h3>
+                    <div id="wallsList"></div>
+                    <button type="button" class="btn btn-small" onclick="addWall()">+ Add Wall</button>
+
+                    <h3>Windows</h3>
+                    <div id="windowsList"></div>
+                    <button type="button" class="btn btn-small" onclick="addWindow()">+ Add Window</button>
+
+                    <h3>Floors</h3>
+                    <div id="floorsList"></div>
+                    <button type="button" class="btn btn-small" onclick="addFloor()">+ Add Floor</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRoomModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRoomProperties()">Save Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="app3d.js"></script>
+</body>
+</html>
