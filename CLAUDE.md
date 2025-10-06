@@ -4,6 +4,8 @@
 
 This project is a Python implementation of the MCS (Microgeneration Certification Scheme) Heat Pump Calculator, originally provided as an Excel spreadsheet (Version 1.10). The calculator performs heat loss calculations following BS EN 12831-1:2017 for domestic heat pump system design.
 
+**Key Achievement**: The implementation now supports **both MCS Excel-style calculations AND heatlossjs-compatible inter-room heat transfer**, providing maximum flexibility for thermal modeling.
+
 ## Implementation Details
 
 ### Architecture
@@ -11,7 +13,7 @@ This project is a Python implementation of the MCS (Microgeneration Certificatio
 The implementation is structured into three main modules:
 
 1. **calculator.py**: Main `HeatPumpCalculator` class that orchestrates calculations
-2. **room.py**: Data classes for buildings, rooms, and fabric elements (walls, windows, floors)
+2. **room.py**: Data classes for buildings, rooms, and fabric elements (walls, windows, floors) with inter-room heat transfer support
 3. **data_tables.py**: Lookup tables and reference data (degree days, U-values, default temperatures)
 
 ### Key Design Decisions
@@ -20,10 +22,11 @@ The implementation is structured into three main modules:
 - Used dataclasses for clean, type-safe data structures
 - Separate classes for different fabric elements (Wall, Window, Floor) with shared interface
 - Room class encapsulates all heat loss calculations for a single space
-- Building class aggregates multiple rooms
+- Building class aggregates multiple rooms and handles inter-room heat transfer
+- **Wall class supports flexible boundaries**: external, ground, unheated, or adjacent room names
 
 #### Calculation Methods
-All calculations follow BS EN 12831 methodology:
+All calculations follow BS EN 12831 methodology with inter-room heat transfer extension:
 
 **Fabric Heat Loss (Watts)**:
 ```python
@@ -31,8 +34,16 @@ Q = Σ (A × U × ΔT × f)
 ```
 - A: area (m²)
 - U: U-value (W/m²K)
-- ΔT: internal - external temperature (K)
+- ΔT: internal - external temperature (K) OR (room - adjacent_room) for inter-room
 - f: temperature correction factor (e.g., 0.5 for ground floors, 1.0 for external walls)
+
+**Inter-Room Heat Transfer (Watts)**:
+```python
+Q_inter_room = A × U × (T_room - T_adjacent)
+```
+- Calculated separately for each wall with adjacent room boundary
+- Supports heat loss (positive) or heat gain (negative) between rooms
+- Compatible with heatlossjs methodology
 
 **Ventilation Heat Loss (Watts)**:
 ```python
@@ -223,6 +234,28 @@ The Python implementation produces results consistent with the Excel calculator 
   - API endpoints
   - Integration into larger systems
 
+### Recent Enhancements
+
+**Inter-Room Heat Transfer (Completed 2025-01-06)**:
+- Added `boundary` and `boundary_temp` fields to `Wall` class
+- Implemented inter-room heat transfer calculations in `Room.fabric_heat_loss_watts()`
+- Building class automatically passes room temperatures for inter-room calculations
+- Validated against heatlossjs midterrace test case (0.01% difference)
+- Full backward compatibility maintained (inter-room is optional)
+- All 61 tests passing including 7 heatlossjs validation tests
+
+**Key Implementation Details**:
+```python
+# Wall with adjacent room boundary
+Wall('Party Wall', area=10, u_value=0.5, boundary='kitchen')
+
+# Room calculation with inter-room heat transfer
+fabric_loss = room.fabric_heat_loss_watts(external_temp, room_temps={'kitchen': 18})
+
+# Building automatically handles room temperature mapping
+summary = building.get_summary(external_temp, dd, include_inter_room=True)
+```
+
 ### Future Enhancements
 
 Potential additions:
@@ -233,7 +266,6 @@ Potential additions:
 5. **Database Integration**: Store and retrieve building designs
 6. **API**: REST API for remote calculations
 7. **GUI**: Simple graphical interface
-8. **More Detailed Models**: Party walls, multiple floors, complex geometries
 
 ### Development Environment
 
@@ -257,8 +289,14 @@ pip install -r requirements.txt
 - **Docstrings**: All public methods documented
 - **PEP 8**: Code follows Python style guidelines
 - **Dataclasses**: Clean, immutable data structures
-- **Testing**: 100% of core functionality tested
+- **Testing**: 61/61 tests passing (100%)
+  - Formula accuracy tests
+  - Excel MCS validation
+  - Cross-validation tests
+  - heatlossjs validation (including inter-room)
+- **Validation**: Matches both MCS Excel (0.001W precision) and heatlossjs (0.01% difference)
 - **Examples**: Complete working examples provided
+- **Backward Compatibility**: All new features are optional and backward compatible
 
 ### File Structure
 
@@ -267,17 +305,24 @@ python_mcs_heatloss/
 ├── mcs_calculator/
 │   ├── __init__.py          # Package exports
 │   ├── calculator.py        # Main calculator class (243 lines)
-│   ├── room.py             # Room & building classes (255 lines)
+│   ├── room.py             # Room & building classes (299 lines, includes inter-room)
 │   └── data_tables.py      # Lookup tables (320 lines)
 ├── tests/
 │   ├── __init__.py
-│   └── test_calculator.py   # Test suite (370 lines)
+│   ├── test_calculator.py   # Core tests (20 tests)
+│   ├── test_excel_validation.py  # Excel validation (16 tests)
+│   ├── test_cross_validation.py  # Cross-validation (18 tests)
+│   └── test_heatlossjs_validation.py  # heatlossjs tests (7 tests)
 ├── example_usage.py         # Complete example (260 lines)
 ├── analyze_excel.py         # Excel analysis script
 ├── extract_formulas.py      # Formula extraction script
+├── heatlossjs_midterrace_test.json  # Test data from heatlossjs
 ├── requirements.txt         # Dependencies
 ├── README.md               # User documentation
-├── CLAUDE.md              # This file
+├── CLAUDE.md              # This file (development notes)
+├── VALIDATION_REPORT.md    # Validation against MCS Excel
+├── HEATLOSSJS_COMPARISON.md  # Comparison with heatlossjs
+├── PROJECT_SUMMARY.md      # Project overview
 └── MCS-Heat-Pump-Calculator-Version-1.10-unlocked-1.xlsm  # Source Excel file
 ```
 

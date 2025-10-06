@@ -5,12 +5,14 @@ A Python implementation of the MCS (Microgeneration Certification Scheme) Heat P
 ## Features
 
 - **Heat Loss Calculation**: Room-by-room and whole building heat loss calculations following BS EN 12831
+- **Inter-Room Heat Transfer**: Model heat loss/gain between adjacent rooms at different temperatures (compatible with heatlossjs)
 - **Degree Days Data**: Built-in CIBSE degree days data for all UK postcode areas
 - **Hot Water Energy**: Calculate domestic hot water energy requirements
 - **Heat Pump Sizing**: Size heat pumps based on design heat loss and hot water demand
 - **Radiator Sizing**: Calculate radiator sizing for low-temperature heat pump systems
 - **Annual Energy Consumption**: Estimate annual energy consumption and costs
 - **U-Value Calculations**: Floor U-value calculations for solid and suspended floors
+- **Flexible Modeling**: Choose between MCS-style (independent rooms) or detailed inter-room thermal modeling
 
 ## Installation
 
@@ -149,7 +151,15 @@ room = Room(
 )
 
 # Add fabric elements
-room.walls.append(Wall('Wall', area=12, u_value=0.3))
+# External walls
+room.walls.append(Wall('External Wall', area=12, u_value=0.3, boundary='external'))
+
+# Party wall to adjacent room (for inter-room heat transfer)
+room.walls.append(Wall('Party Wall to Hall', area=8, u_value=0.5, boundary='hall'))
+
+# Unheated space
+room.walls.append(Wall('Loft', area=15, u_value=0.2, boundary='unheated', boundary_temp=18))
+
 room.windows.append(Window('Window', area=2, u_value=1.4))
 room.floors.append(Floor('Floor', area=15, u_value=0.25, temperature_factor=0.5))
 
@@ -157,10 +167,34 @@ room.floors.append(Floor('Floor', area=15, u_value=0.25, temperature_factor=0.5)
 external_temp = -2.0
 degree_days = 2033
 
+# Without inter-room heat transfer
 fabric_loss = room.fabric_heat_loss_watts(external_temp)
+
+# With inter-room heat transfer (provide room temperatures)
+room_temps = {'hall': 19, 'kitchen': 18}
+fabric_loss_with_interroom = room.fabric_heat_loss_watts(external_temp, room_temps)
+
 vent_loss = room.ventilation_heat_loss_watts(external_temp)
-total_loss = room.total_heat_loss_watts(external_temp)
+total_loss = room.total_heat_loss_watts(external_temp, room_temps)
 annual_kwh = room.total_heat_loss_kwh(external_temp, degree_days)
+```
+
+### Wall Boundaries
+
+Walls support different boundary types for flexible thermal modeling:
+
+```python
+# External boundary (uses external temperature)
+Wall('External Wall', area=10, u_value=0.3, boundary='external')
+
+# Ground boundary (uses ground temperature)
+Wall('Ground Contact', area=10, u_value=0.5, boundary='ground', boundary_temp=10.6)
+
+# Unheated space (uses specified or default 18°C)
+Wall('To Garage', area=8, u_value=0.4, boundary='unheated', boundary_temp=15)
+
+# Adjacent room (uses room's design temperature for inter-room heat transfer)
+Wall('Party Wall', area=12, u_value=0.5, boundary='kitchen')
 ```
 
 ### Data Tables
@@ -205,6 +239,15 @@ Where:
 - U = U-value (W/m²K)
 - ΔT = temperature difference (K)
 - f = temperature correction factor (e.g., 0.5 for ground floors)
+
+### Inter-Room Heat Transfer
+
+For walls with adjacent room boundaries:
+```
+Q_inter_room = A × U × (T_room - T_adjacent)
+```
+
+This allows modeling heat loss/gain between rooms at different temperatures, providing more accurate thermal modeling for complex buildings.
 
 ### Ventilation Heat Loss
 
@@ -273,6 +316,25 @@ ANNUAL ENERGY CONSUMPTION (COP = 3.5)
   Electricity Consumption: 3,287 kWh/year
   Estimated Annual Cost (@ £0.30/kWh): £986
 ```
+
+## Validation
+
+This implementation has been validated against:
+
+1. **MCS Excel Calculator** - Exact match (within 0.001W precision)
+2. **heatlossjs** - 0.01% difference (0.12W out of 1179W on test case)
+
+See `VALIDATION_REPORT.md` and `HEATLOSSJS_COMPARISON.md` for detailed validation results.
+
+### Test Results
+
+✅ **61/61 tests passing (100%)**
+
+- Formula accuracy: 4/4 ✓
+- Excel MCS validation: 16/16 ✓
+- Cross-validation: 18/18 ✓
+- Core functionality: 20/20 ✓
+- heatlossjs validation: 7/7 ✓ (including inter-room heat transfer)
 
 ## Testing
 
